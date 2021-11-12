@@ -60,6 +60,19 @@ namespace MarketApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,UrunAd,BirimFiyat,Resim")] Urun urun, IFormFile dosya)
         {
+            ResimGecerliliginiKontrolEt(dosya);
+            if (ModelState.IsValid)
+            {
+                urun.Resim = ResimKaydet(dosya);
+                _context.Add(urun);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(urun);
+        }
+
+        private void ResimGecerliliginiKontrolEt(IFormFile dosya)
+        {
             if (dosya != null)
             {
                 if (dosya.Length > 10 * 1000 * 1000)
@@ -72,14 +85,6 @@ namespace MarketApp.Controllers
                 }
 
             }
-            if (ModelState.IsValid)
-            {
-                urun.Resim = ResimKaydet(dosya);
-                _context.Add(urun);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(urun);
         }
 
         private string ResimKaydet(IFormFile dosya)
@@ -101,6 +106,7 @@ namespace MarketApp.Controllers
         // GET: Urunler/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
+
             if (id == null)
             {
                 return NotFound();
@@ -119,17 +125,23 @@ namespace MarketApp.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,UrunAd,BirimFiyat,Resim")] Urun urun)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,UrunAd,BirimFiyat,Resim")] Urun urun, IFormFile dosya)
         {
             if (id != urun.Id)
             {
                 return NotFound();
             }
+            ResimGecerliliginiKontrolEt(dosya);
 
             if (ModelState.IsValid)
             {
                 try
                 {
+                    if (dosya != null && dosya.Length>0)
+                    {
+                        ResimSil(urun.Resim);
+                        urun.Resim = ResimKaydet(dosya);
+                    }
                     _context.Update(urun);
                     await _context.SaveChangesAsync();
                 }
