@@ -9,7 +9,7 @@
     @foreach (Urun item in Model)
     {
         <div class="card m-4" style="width: 18rem;">
-            <img src="~/uploads/@item.Resim" class="card-img-top" alt="@item.UrunAd">
+            <img src="~/uploads/@(item.Resim ?? "noimage.png")"  class="card-img-top" alt="@item.UrunAd">
             <div class="card-body">
                 <h5 class="card-title">@item.UrunAd</h5>
                 <p class="card-text">@item.UrunAd @item.BirimFiyat.ToString("n2")₺ fiyatından satışa sunuluyor.</p>

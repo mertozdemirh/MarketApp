@@ -7,16 +7,20 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MarketApp.Models;
 using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Hosting;
 
 namespace MarketApp.Controllers
 {
     public class UrunlerController : Controller
     {
         private readonly UygulamaDbContext _context;
+        private readonly IWebHostEnvironment env;
 
-        public UrunlerController(UygulamaDbContext context)
+        public UrunlerController(UygulamaDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            this.env = env;
         }
 
         // GET: Urunler
@@ -56,21 +60,42 @@ namespace MarketApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,UrunAd,BirimFiyat,Resim")] Urun urun, IFormFile dosya)
         {
-            if (dosya.Length > 10*1000*1000)
+            if (dosya != null)
             {
-                ModelState.AddModelError("Resim", "Görselin boyutu 10MB'dan büyük olamaz");
-            }
-            else if (!dosya.ContentType.StartsWith("image/"))
-            {
-                ModelState.AddModelError("Resim", "Bir resim dosyası seçmediniz");
+                if (dosya.Length > 10 * 1000 * 1000)
+                {
+                    ModelState.AddModelError("Resim", "Görselin boyutu 10MB'dan büyük olamaz");
+                }
+                else if (!dosya.ContentType.StartsWith("image/"))
+                {
+                    ModelState.AddModelError("Resim", "Bir resim dosyası seçmediniz");
+                }
+
             }
             if (ModelState.IsValid)
             {
+                urun.Resim = ResimKaydet(dosya);
                 _context.Add(urun);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
             return View(urun);
+        }
+
+        private string ResimKaydet(IFormFile dosya)
+        {
+            if (dosya == null || dosya.Length == 0) return null;
+
+            string uzanti = Path.GetExtension(dosya.FileName);
+            string yeniAd = Guid.NewGuid() + uzanti;
+            string kayitYolu = Path.Combine(env.WebRootPath, "uploads", yeniAd);
+
+            using (var fs = System.IO.File.Create(kayitYolu))
+            {
+                dosya.CopyTo(fs);
+            }
+            return yeniAd;
+    
         }
 
         // GET: Urunler/Edit/5
@@ -148,9 +173,18 @@ namespace MarketApp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var urun = await _context.Urunler.FindAsync(id);
+            ResimSil(urun.Resim);
             _context.Urunler.Remove(urun);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        private void ResimSil(string resim)
+        {
+            if (string.IsNullOrEmpty(resim)) return;
+            string dosyaYolu = Path.Combine(env.WebRootPath, "uploads", resim);
+            System.IO.File.Delete(dosyaYolu);
+
         }
 
         private bool UrunExists(int id)
